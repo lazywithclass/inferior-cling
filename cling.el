@@ -4,8 +4,8 @@
   "Move to the buffer containing Cling, or create one if it does not exist. Defaults to C++11"
   (interactive)
   (let ((flags (or flags "-std=c++11"))) 
-    (make-comint "inferior-cling" "cling" nil flags)
-    (switch-to-buffer "*inferior-cling*")))
+    (make-comint "inferior-cling" "/Users/tninja/Downloads/cling_2016-12-04_mac1012/bin/cling" nil flags)
+    (switch-to-buffer-other-window "*inferior-cling*")))
 
 (defun cling-send-string (string &optional process)
   "Send a string terminated with a newline to the inferior-cling buffer. Has the effect of executing a command"
@@ -22,6 +22,17 @@
   "Sends the current buffer to the inferior-cling buffer."
   (interactive)
   (cling-send-region (point-min) (point-max))) ;;do i want to wrap-raw this? 
+
+(defun cling-send-block ()
+  (interactive)
+  (let* ((p (point)))
+	(mark-paragraph)
+	(cling-send-region (region-beginning) (region-end))
+	(goto-char p)))
+
+(defun cling-send-line ()
+  (interactive)
+  (cling-send-block (line-beginning-position) (line-end-position)))
 
 (defun cling-wrap-raw (string)
   "Wraps `string` in \".rawInput\", which tells Cling to accept function definitions"
@@ -45,7 +56,7 @@
   (push-mark (point))
   (re-search-forward "{")
   (save-excursion
-   (flatten-function-def))
+	(flatten-function-def))
   (backward-char)
   (forward-sexp))
 
@@ -59,10 +70,20 @@
     (undo)));;;this is a rather leaky way of doing temporary changes. there should be some way to save buffer contents or something
 ;;;probably uses with-temp-buffer
 
+(defun cling-switch-to-repl ()
+  (interactive)
+  (if (get-buffer "*inferior-cling*")
+	  (switch-to-buffer-other-window "*inferior-cling*")
+	(cling)))
+
 (defvar inferior-cling-keymap
-  (let ((map (current-global-map)))
-    (define-key map (kbd "C-c r") 'cling-send-region)
-    (define-key map (kbd "C-c d") 'cling-wrap-defun-and-send)
+  (let ((map c-mode-map))
+    (define-key map (kbd "C-c C-r") 'cling-send-region)
+    (define-key map (kbd "C-c C-c") 'cling-send-block)
+    (define-key map (kbd "C-c C-n") 'cling-send-line)
+    (define-key map (kbd "C-c C-b") 'cling-send-buffer)
+    (define-key map (kbd "C-c C-d") 'cling-wrap-defun-and-send)
+	(define-key c-mode-map (kbd "C-c C-z") 'cling-switch-to-repl)
     map))
 
 (define-minor-mode inferior-cling-mode
@@ -70,6 +91,5 @@
 
 When inferior-cling-mode is enabled, we rebind keys to facilitate working with cling."
   :keymap inferior-cling-keymap)
-
 
 (provide 'cling)
